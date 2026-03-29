@@ -142,7 +142,6 @@ function selectPC(url, name) {
     updateStatusIndicator('checking');
     if (isStreaming) toggleStream();
     
-    listFiles();
     startHealthCheck();
 }
 

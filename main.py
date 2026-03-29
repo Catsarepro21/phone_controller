@@ -102,34 +102,30 @@ def lock_pc():
 
 import asyncio
 
-async def generate_frames():
+def _capture_frames():
+    """Runs in its own OS thread - completely isolated from the async event loop."""
     try:
         with mss.mss() as sct:
             monitor = sct.monitors[1]
-            mon_x = monitor["left"]
-            mon_y = monitor["top"]
+            mon_x, mon_y = monitor["left"], monitor["top"]
             while True:
                 img = sct.grab(monitor)
                 frame = np.array(img)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
-                # Draw the mouse cursor as a visible dot
                 cx, cy = pyautogui.position()
-                cursor_x = cx - mon_x
-                cursor_y = cy - mon_y
-                cv2.circle(frame, (cursor_x, cursor_y), 8, (255, 255, 255), -1)
-                cv2.circle(frame, (cursor_x, cursor_y), 8, (0, 0, 0), 2)
+                cv2.circle(frame, (cx - mon_x, cy - mon_y), 8, (255, 255, 255), -1)
+                cv2.circle(frame, (cx - mon_x, cy - mon_y), 8, (0, 0, 0), 2)
                 ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
                 if ret:
-                    frame_bytes = buffer.tobytes()
                     yield (b'--frame\r\n'
-                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                await asyncio.sleep(0.05)
+                           b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                time.sleep(0.05)
     except Exception:
         pass
 
 @app.get("/stream")
 def video_stream():
-    return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+    return StreamingResponse(_capture_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
