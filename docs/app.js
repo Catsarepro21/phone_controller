@@ -3,11 +3,20 @@ let activeName = null;
 let pingInterval = null;
 let isStreaming = false;
 
-// ── Trackpad State ─────────────────────────────────────────────
-let trackpad = null;
-let lastTouch = null;
+// ── WebSocket Mouse Control ─────────────────────────────────────
+let mouseWs = null;
 let pendingDx = 0;
 let pendingDy = 0;
+let lastTouch = null;
+let trackpad = null;
+
+function connectMouseWs(url) {
+    if (mouseWs) { mouseWs.close(); mouseWs = null; }
+    const wsUrl = url.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws/mouse';
+    mouseWs = new WebSocket(wsUrl);
+    mouseWs.onclose = () => { mouseWs = null; };
+    mouseWs.onerror = () => { mouseWs = null; };
+}
 
 function setupTrackpad() {
     trackpad = document.getElementById("trackpad");
@@ -20,7 +29,7 @@ function setupTrackpad() {
     }, {passive: false});
 
     trackpad.addEventListener("touchmove", (e) => {
-        e.preventDefault(); // stop page scrolling while using trackpad
+        e.preventDefault();
         if(e.touches.length === 1 && lastTouch) {
             const currentX = e.touches[0].clientX;
             const currentY = e.touches[0].clientY;
@@ -34,21 +43,14 @@ function setupTrackpad() {
         lastTouch = null;
     });
 
-    // Worker to send mouse updates cleanly without flooding the Python API
-    let isSendingMouse = false;
-    setInterval(async () => {
-        if (isSendingMouse) return;
-        if (Math.abs(pendingDx) > 0 || Math.abs(pendingDy) > 0) {
-            let dx = pendingDx;
-            let dy = pendingDy;
+    // Send accumulated deltas over WebSocket - no new connections per move
+    setInterval(() => {
+        if ((Math.abs(pendingDx) > 0 || Math.abs(pendingDy) > 0) && mouseWs && mouseWs.readyState === WebSocket.OPEN) {
+            mouseWs.send(JSON.stringify({ dx: pendingDx, dy: pendingDy }));
             pendingDx = 0;
             pendingDy = 0;
-            
-            isSendingMouse = true;
-            await sendMouseMove(dx, dy);
-            isSendingMouse = false;
         }
-    }, 40);
+    }, 30);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -142,6 +144,7 @@ function selectPC(url, name) {
     updateStatusIndicator('checking');
     if (isStreaming) toggleStream();
     
+    connectMouseWs(url);
     startHealthCheck();
 }
 

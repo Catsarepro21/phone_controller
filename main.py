@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,6 +60,18 @@ def mouse_click(button: str = "left"):
     # button is "left" or "right"
     pyautogui.click(button=button)
     return {"status": "ok"}
+
+@app.websocket("/ws/mouse")
+async def ws_mouse(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            dx = data.get("dx", 0)
+            dy = data.get("dy", 0)
+            pyautogui.move(dx * 1.5, dy * 1.5)
+    except (WebSocketDisconnect, Exception):
+        pass
 
 class KeyboardInput(BaseModel):
     text: str
