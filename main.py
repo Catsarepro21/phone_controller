@@ -67,9 +67,17 @@ async def ws_mouse(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            dx = data.get("dx", 0)
-            dy = data.get("dy", 0)
-            pyautogui.move(dx * 1.5, dy * 1.5)
+            msg_type = data.get("type", "mouse")
+            if msg_type == "mouse":
+                dx = data.get("dx", 0)
+                dy = data.get("dy", 0)
+                pyautogui.move(dx * 1.5, dy * 1.5)
+            elif msg_type == "key":
+                char = data.get("char", "")
+                if char == "backspace":
+                    pyautogui.press("backspace")
+                elif len(char) == 1:
+                    pyautogui.write(char, interval=0)
     except (WebSocketDisconnect, Exception):
         pass
 
