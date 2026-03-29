@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Remote</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+    <style>
+        body { background-color: #0f172a; overscroll-behavior-y: none; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .status-online { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
+        .status-offline { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+        .status-checking { background-color: #eab308; }
+        .device-card { transition: all 0.2s; }
+        .device-card.active { border-color: rgba(59, 130, 246, 0.5); background: rgba(30, 41, 59, 0.9); }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen p-4 flex flex-col pt-6 sm:pt-10 pb-10">
+    <div class="max-w-md w-full mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center space-y-1 mb-2">
+            <h1 class="text-2xl font-bold tracking-tight text-white">Universal Remote</h1>
+            <p class="text-sm text-slate-400">Control your devices securely</p>
+        </div>
+
+        <!-- PC Selector -->
+        <div class="glass-panel p-5 rounded-2xl shadow-2xl shadow-black/50 space-y-4 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">Your Devices</h2>
+                <button onclick="openAddPCModal()" class="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1 font-medium">Add</button>
+            </div>
+            <div id="pcList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Status Banner -->
+        <div id="statusBanner" class="hidden flex items-center justify-center gap-2 text-sm glass-panel py-2.5 rounded-xl border-white/10 shadow-lg">
+            <span id="statusIndicator" class="status-dot status-checking transition-colors duration-300"></span>
+            <span id="activeLabel" class="font-medium text-slate-200">Connecting...</span>
+        </div>
+
+        <!-- System Stats -->
+        <div id="sysStats" class="hidden flex justify-around text-xs font-mono text-slate-400 glass-panel py-2 rounded-xl">
+            <span>CPU: <span id="cpuVal" class="text-blue-400">--%</span></span>
+            <span>RAM: <span id="ramVal" class="text-purple-400">--%</span></span>
+        </div>
+
+        <!-- Actions Control Panel -->
+        <div id="controls" class="space-y-5 hidden transition-all duration-300">
+            
+            <!-- Live Stream -->
+            <div class="glass-panel p-4 rounded-2xl shadow-xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">Live Monitor</h2>
+                    <span id="streamStatusBadge" class="hidden text-[10px] font-bold tracking-widest bg-red-500/20 text-red-400 px-2 py-1 rounded-md border border-red-500/30 flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(239,68,68,1)]"></span>LIVE</span>
+                </div>
+                <button onclick="toggleStream()" id="streamBtn" class="w-full bg-blue-600/80 hover:bg-blue-500 text-white font-medium py-2 rounded-xl transition border border-blue-500/50">Connect Screen</button>
+                <div id="videoContainer" class="hidden rounded-xl overflow-hidden border border-slate-700/50 bg-black/50 aspect-video relative flex items-center justify-center">
+                    <div id="streamLoader" class="absolute hidden animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    <img id="videoStream" class="w-full h-full object-contain hidden" alt="Live Stream">
+                </div>
+            </div>
+
+            <!-- Interative & Media -->
+            <div class="glass-panel p-4 rounded-2xl shadow-xl space-y-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">Trackpad & Media</h2>
+                
+                <!-- Media Row -->
+                <div class="flex justify-between items-center bg-black/30 rounded-xl p-1 border border-white/5">
+                    <button onclick="sendKey('volumedown')" class="p-3 text-slate-400 hover:text-white transition">🔉</button>
+                    <button onclick="sendKey('volumeup')" class="p-3 text-slate-400 hover:text-white transition">🔊</button>
+                    <div class="w-px h-6 bg-white/10 mx-1"></div>
+                    <button onclick="sendKey('prevtrack')" class="p-3 text-slate-400 hover:text-white transition">⏮</button>
+                    <button onclick="sendKey('playpause')" class="p-3 text-slate-400 hover:text-white transition">⏯</button>
+                    <button onclick="sendKey('nexttrack')" class="p-3 text-slate-400 hover:text-white transition">⏭</button>
+                </div>
+
+                <!-- Keyboard Row -->
+                <div class="flex gap-2">
+                    <input type="text" id="kbText" placeholder="Type info here..." class="flex-1 bg-black/40 text-white px-3 py-2 rounded-xl text-sm border border-white/10 outline-none focus:border-blue-500">
+                    <button onclick="sendText()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-xl text-sm font-medium transition">Type on PC</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="sendKey('win')" class="bg-white/5 hover:bg-white/10 py-2 rounded-xl text-xs font-medium border border-white/5 transition">Win Start</button>
+                    <button onclick="sendKey('enter')" class="bg-white/5 hover:bg-white/10 py-2 rounded-xl text-xs font-medium border border-white/5 transition">Enter</button>
+                    <button onclick="sendKey('backspace')" class="bg-white/5 hover:bg-white/10 py-2 rounded-xl text-xs font-medium border border-white/5 transition">Backspace</button>
+                </div>
+
+                <!-- Trackpad -->
+                <div id="trackpad" class="h-40 rounded-xl bg-slate-900/90 border border-slate-700 w-full touch-none relative overflow-hidden flex items-center justify-center shadow-inner">
+                    <p class="text-slate-600 text-xs font-medium pointer-events-none">Swipe to move mouse</p>
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="sendClick('left')" class="flex-1 bg-indigo-600/50 hover:bg-indigo-500/70 py-3 rounded-xl border border-indigo-500/30 text-sm font-medium transition shadow-lg shadow-indigo-900/20">Left Click</button>
+                    <button onclick="sendClick('right')" class="flex-1 bg-slate-700/50 hover:bg-slate-600/70 py-3 rounded-xl border border-slate-500/30 text-sm font-medium transition shadow-lg">Right Click</button>
+                </div>
+            </div>
+
+            <!-- Power Controls -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="doAction('sleep')" class="glass-panel hover:bg-white/10 text-white font-medium py-3 rounded-xl transition border-white/10">Sleep</button>
+                <button onclick="doAction('lock')" class="glass-panel hover:bg-white/10 text-white font-medium py-3 rounded-xl transition border-white/10">Lock</button>
+                <button onclick="doAction('shutdown')" class="col-span-2 bg-gradient-to-r from-red-600/80 to-rose-700/80 hover:from-red-500 text-white font-semibold py-3 rounded-xl border border-red-500/30 shadow-lg shadow-red-900/20">Shut Down</button>
+            </div>
+            
+            <!-- File Sharing -->
+            <div class="glass-panel p-4 rounded-2xl shadow-xl space-y-3">
+                <div class="flex items-center justify-between mb-1">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">File Storage</h2>
+                    <button onclick="listFiles()" class="text-xs text-blue-400 hover:text-blue-300 flex items-center">Refresh</button>
+                </div>
+                <input type="file" id="fileInput" class="hidden" onchange="updateFileName()">
+                <div class="flex gap-2 text-sm justify-between">
+                    <button onclick="document.getElementById('fileInput').click()" class="flex-1 bg-white/5 hover:bg-white/10 py-2.5 rounded-xl border border-white/10"><span id="fileLabel">Select File</span></button>
+                    <button onclick="uploadFile()" id="uploadBtn" class="flex-1 bg-teal-600/80 hover:bg-teal-500 py-2.5 rounded-xl border border-teal-500/50 shadow-lg">Upload</button>
+                </div>
+                <ul id="fileList" class="space-y-1.5 text-xs bg-black/20 p-2 rounded-xl border border-white/5 min-h-[60px] max-h-32 overflow-y-auto"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div id="addPCModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="glass-panel rounded-2xl p-6 w-[90%] max-w-sm space-y-4 shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
+            <div>
+                <h3 class="text-lg font-bold text-white">Add Device</h3>
+                <p class="text-xs text-slate-400 mt-1">Local IP or Tailscale domain</p>
+            </div>
+            <div class="space-y-3">
+                <input id="pcName" type="text" placeholder="Device Name (e.g. Desktop)" class="w-full bg-black/30 text-white px-3 py-2 rounded-lg border border-white/10 text-sm">
+                <input id="pcUrl" type="text" placeholder="URL Address (https://...)" class="w-full bg-black/30 text-white px-3 py-2 rounded-lg border border-white/10 text-sm">
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeAddPCModal()" class="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-sm border border-white/10">Cancel</button>
+                <button onclick="addPC()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg shadow-lg text-sm">Add Device</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=2.1"></script>
+</body>
+</html>

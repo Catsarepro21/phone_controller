@@ -1,0 +1,16 @@
+# Tailscale SSL Certificates (Keep these private!)
+*.key
+*.crt
+
+# Uploaded Files
+uploads/
+Phone Uploads/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS Files
+.DS_Store
+Thumbs.db
