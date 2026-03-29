@@ -107,18 +107,16 @@ function sendLiveKey(e) {
     const cur = e.target.value;
     const prev = _prevKbValue;
     if (cur.length > prev.length) {
-        // character(s) added
         const added = cur.slice(prev.length);
         for (const ch of added) {
             mouseWs.send(JSON.stringify({ type: "key", char: ch }));
         }
     } else if (cur.length < prev.length) {
-        // backspace
         mouseWs.send(JSON.stringify({ type: "key", char: "backspace" }));
     }
-    _prevKbValue = cur;
-    // Keep the input box clear after 1 char so it doesn't fill up
-    if (cur.length > 20) { e.target.value = ""; _prevKbValue = ""; }
+    // Always clear the box so it acts like a transparent keyboard passthrough
+    e.target.value = "";
+    _prevKbValue = "";
 }
 
 
