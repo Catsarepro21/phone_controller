@@ -106,10 +106,18 @@ async def generate_frames():
     try:
         with mss.mss() as sct:
             monitor = sct.monitors[1]
+            mon_x = monitor["left"]
+            mon_y = monitor["top"]
             while True:
                 img = sct.grab(monitor)
                 frame = np.array(img)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                # Draw the mouse cursor as a visible dot
+                cx, cy = pyautogui.position()
+                cursor_x = cx - mon_x
+                cursor_y = cy - mon_y
+                cv2.circle(frame, (cursor_x, cursor_y), 8, (255, 255, 255), -1)
+                cv2.circle(frame, (cursor_x, cursor_y), 8, (0, 0, 0), 2)
                 ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
                 if ret:
                     frame_bytes = buffer.tobytes()
