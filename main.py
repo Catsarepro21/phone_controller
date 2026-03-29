@@ -14,6 +14,7 @@ import pyautogui
 from pydantic import BaseModel
 
 pyautogui.FAILSAFE = False
+pyautogui.PAUSE = 0
 
 UPLOAD_DIR = os.path.join(pathlib.Path.home(), "Documents", "Phone Uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)

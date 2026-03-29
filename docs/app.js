@@ -35,13 +35,20 @@ function setupTrackpad() {
     });
 
     // Worker to send mouse updates cleanly without flooding the Python API
-    setInterval(() => {
+    let isSendingMouse = false;
+    setInterval(async () => {
+        if (isSendingMouse) return;
         if (Math.abs(pendingDx) > 0 || Math.abs(pendingDy) > 0) {
-            sendMouseMove(pendingDx, pendingDy);
+            let dx = pendingDx;
+            let dy = pendingDy;
             pendingDx = 0;
             pendingDy = 0;
+            
+            isSendingMouse = true;
+            await sendMouseMove(dx, dy);
+            isSendingMouse = false;
         }
-    }, 50);
+    }, 40);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
