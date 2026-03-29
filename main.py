@@ -100,20 +100,24 @@ def lock_pc():
     os.system("rundll32.exe user32.dll,LockWorkStation")
     return {"status": "success", "message": "Locked."}
 
-def generate_frames():
-    with mss.mss() as sct:
-        monitor = sct.monitors[1]
-        while True:
-            img = sct.grab(monitor)
-            frame = np.array(img)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
-            ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
-            if not ret:
-                continue
-            frame_bytes = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-            time.sleep(0.05)
+import asyncio
+
+async def generate_frames():
+    try:
+        with mss.mss() as sct:
+            monitor = sct.monitors[1]
+            while True:
+                img = sct.grab(monitor)
+                frame = np.array(img)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
+                if ret:
+                    frame_bytes = buffer.tobytes()
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                await asyncio.sleep(0.05)
+    except Exception:
+        pass
 
 @app.get("/stream")
 def video_stream():
